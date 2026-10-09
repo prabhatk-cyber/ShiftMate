@@ -1,0 +1,14 @@
+const assert=require("node:assert/strict"),fs=require("node:fs"),path=require("node:path");
+const html=fs.readFileSync(path.join(__dirname,"..","index.html"),"utf8");
+const script=html.match(/<script>([\s\S]*?)<\/script>/);assert.ok(script,"application script exists");
+const core=script[1].slice(0,script[1].indexOf("function go("));
+global.window={};(0,eval)(core+"\nglobalThis.c=window.ShiftMateCore;");
+const c=globalThis.c;
+assert.equal(c.parseTime("08:30"),510);assert.equal(c.parseTime("523"),523);assert.equal(c.mmss(570),"9:30");
+const a=c.calculateAHT([{cases:10,seconds:300},{cases:90,seconds:600}]);assert.equal(a.cases,100);assert.equal(a.totalSeconds,57000);assert.equal(a.aht,570);assert.equal(a.minutes,9.5);
+assert.throws(()=>c.calculateAHT([{cases:0,seconds:300}]),/positive count/);assert.throws(()=>c.calculateAHT([{cases:-1,seconds:30}]),/whole numbers/);assert.throws(()=>c.parseTime("08:75"),/MM:SS/);
+const p=c.calculatePlan(500,320,6,30);assert.equal(p.remaining,180);assert.equal(p.perDay,30);assert.equal(p.projected,500);assert.equal(p.onTrack,true);assert.equal(c.calculatePlan(500,400,0,10).perDay,null);
+const s=c.calculateShift("22:00","06:00",30,100,7,1.5);assert.equal(s.elapsed,8);assert.equal(s.paid,7.5);assert.equal(s.reg,7);assert.equal(s.ot,.5);assert.equal(s.total,775);assert.throws(()=>c.calculateShift("09:00","18:00",600,100,8,1.5),/Break cannot exceed/);
+const rows=c.parseCSV('\uFEFFID,Name,Note\r\n1,Ada,"hello, world"\r\n2,"B""ob","line 1\nline 2"\r\n');assert.equal(rows.length,3);assert.equal(rows[1][2],"hello, world");assert.equal(rows[2][1],'B"ob');assert.equal(rows[2][2],"line 1\nline 2");assert.throws(()=>c.parseCSV('ID,Name\n1,"unclosed'),/unclosed/);
+const report=c.inspectCSV([["ID","Name"],["1","Ada"],["1","Bob"],["2","   "]],0,["ID","Name","Status"]);assert.equal(report.dataRows,3);assert.ok(report.issues.some(x=>x.type==="Duplicate key"));assert.ok(report.issues.some(x=>x.type==="Missing value"));assert.ok(report.issues.some(x=>x.type==="Missing required column"));assert.equal(c.csvEscape('a,"b"'),'"a,""b"""');
+console.log("ShiftMate core tests: all assertions passed.");
